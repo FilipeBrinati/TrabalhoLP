@@ -6,6 +6,7 @@ Grupo:
 
 :- dynamic occupied/3.
 :- dynamic boardSize/2.
+:- dynamic boardDistance/3.
 
 
 % Criação da Mesa -------------------------------------
@@ -13,6 +14,7 @@ createBoardSimp(X) :-
     (   X < 0 -> write("Tabela vazia"));!,
     (   G is X+1,
         assertz(boardSize(X,G)),
+        pesoDistancia(0,0),
         write("Board Simplificado Criado \n"),
         write("Use a funcao 'insertXSimp(X)' para inserir\n")
     ).
@@ -22,10 +24,41 @@ createBoardNormal(X,Y) :-
     (   Y =< 0 -> write("Tabela vazia"));!,
 
     (   assertz(boardSize(X,Y)),
+        pesoDistancia(0,0),
         write("Board Normal Criado \n"),
         write("Use a funcao 'insertXNormal(X)' para inserir\n")
 
     ).
+%------------------------------------------------------
+
+% Criando distâncias e pesos --------------------------
+pesoDistancia(X,Y):-
+    (   boardSize(M,_),
+        X > M,
+        write("X máximo"),
+        !
+    );
+    (   boardSize(_,N),
+        Y > N,
+        write("Y máximo"),
+        !
+    );
+    (   (boardDistance(X,Y,_))->(
+        F is X+1,
+        D is Y+1,
+        pesoDistancia(F, Y),
+        pesoDistancia(X, D),
+        pesoDistancia(F, D));(
+        (   X >= Y ->(Z is X-Y); Z is Y-X),
+        assertz(boardDistance(X,Y,Z)),
+        F is X+1,
+        D is Y+1,
+        pesoDistancia(F, Y),
+        pesoDistancia(X, D),
+        pesoDistancia(F, D))
+    ).
+
+
 %------------------------------------------------------
 
 
@@ -155,11 +188,13 @@ checkFinishDiagonalLR(X, Y,Simb):-
 empate(X,Y):-
     (   boardSize(M,_),
         X > M,
-        write("X máximo")
+        write("X máximo"),
+        !
     );
     (   boardSize(_,N),
         Y > N,
-        write("Y máximo")
+        write("Y máximo"),
+        !
     );
     (   (occupied(X,Y,_))->(
         F is X+1,
@@ -169,6 +204,8 @@ empate(X,Y):-
         empate(F, D));(
         write("Jogo não acabado"),!)
     ).
+
+%------------------------------------------------------
 
 
 %Função para inserir X --------------------------------
@@ -225,7 +262,7 @@ insertXAux(X,Y):-
 %------------------------------------------------------
 
 
-%Função para inserir X --------------------------------
+%Função para inserir O --------------------------------
 insertONormal(X,Y):-
     (
     boardSize(M,_),
