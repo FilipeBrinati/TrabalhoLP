@@ -155,13 +155,11 @@ checkFinishDiagonalLR(X, Y,Simb):-
 empate(X,Y):-
     (   boardSize(M,_),
         X > M,
-        write("X máximo"),
-        !
+        write("X máximo")
     );
     (   boardSize(_,N),
         Y > N,
-        write("Y máximo"),
-        !
+        write("Y máximo")
     );
     (   (occupied(X,Y,_))->(
         F is X+1,
