@@ -22,8 +22,7 @@ createBoardSimp(X) :-
         write("Use a funcao 'checkFinish(x)' para ver se ganhou\n"),
         write("Use a funcao 'checkFinish(o)' para ver se perdeu\n"),
         write("Use a funcao 'empate(0,0)' para ver se deu velha\n"),
-        write("Se der apenas true, o jogo acabou"),
-        write("Use 'destroy()' para apagar todos os dados e comecar um novo jogo")
+        write("Se der apenas true, o jogo acabou")
     ).
 
 createBoardNormal(X,Y) :-
@@ -36,8 +35,7 @@ createBoardNormal(X,Y) :-
         write("Use a funcao 'checkFinish(x)' para ver se ganhou\n"),
         write("Use a funcao 'checkFinish(o)' para ver se perdeu\n"),
         write("Use a funcao 'empate(0,0)' para ver se deu velha\n"),
-        write("Se der apenas true, o jogo acabou"),
-        write("Use 'destroy()' para apagar todos os dados e comecar um novo jogo")
+        write("Se der apenas true, o jogo acabou")
     ).
 %------------------------------------------------------
 
