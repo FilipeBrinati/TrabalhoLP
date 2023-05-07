@@ -2,6 +2,7 @@
 Primeiro Trabalho
 Grupo:
   Filipe Brinati Furtado  -  201865563C
+  Lucca Oliveira Schroder - 201765205C
 */
 
 :- dynamic occupied/3.
