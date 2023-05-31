@@ -18,7 +18,7 @@ main :: IO ()
 main = do
   putStrLn "Bem-vindo ao Campo Minado!"
   (rows, cols) <- getSize
-  numBombs <- getNumBombs
+  numBombs <- getNumBombs (rows, cols)
   let board = generateBoard rows cols numBombs
   playGame rows cols board
 
@@ -36,15 +36,21 @@ getSize = do
       putStrLn "Tamanho inválido. Tente novamente."
       getSize
 
-getNumBombs :: IO Int
-getNumBombs = do
+getNumBombs :: (Int, Int) -> IO Int
+getNumBombs (rows, cols) = do
   putStrLn "Digite o número de bombas:"
   numBombs <- getIntInput
-  if numBombs >= 0
+  let maxBombs = rows * cols `div` 2
+  if numBombs >= 0 && numBombs <= maxBombs
     then return numBombs
     else do
-      putStrLn "Número inválido. Tente novamente."
-      getNumBombs
+      if numBombs > maxBombs
+        then do
+          putStrLn $ "Numero de Bombas excede o máximo. " ++ show maxBombs ++ " sendo utilizadas"
+          return maxBombs
+        else do
+          putStrLn $ "Número inválido. Tente novamente."
+          getNumBombs (rows, cols)
 
 getIntInput :: IO Int
 getIntInput = do
