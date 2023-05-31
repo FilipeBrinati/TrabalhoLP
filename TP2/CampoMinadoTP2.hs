@@ -141,11 +141,11 @@ playGame rows cols board = do
   if isBomb (getCell updatedBoard coord)
     then do
       putStrLn $ "\n" ++ renderBoard (revealAllCells updatedBoard)
-      putStrLn "Você perdeu! Fim de jogo."
+      putStrLn "Game Over! Voce foi explodido!"
     else if isGameOver updatedBoard
            then do
              putStrLn $ "\n" ++ renderBoard (revealAllCells updatedBoard)
-             putStrLn "Parabéns! Você venceu!"
+             putStrLn "Parabens! Voce venceu!"
            else playGame rows cols updatedBoard
 
 
@@ -188,7 +188,7 @@ renderBoard :: Board -> String
 renderBoard = unlines . map renderRow
   where
     renderRow = intercalate " " . map renderCell
-    renderCell Empty = "."
+    renderCell Empty = "*"
     renderCell (Number n) = show n
     renderCell Bomb = "X"
 -- modificar aqui quando acabar de testar
