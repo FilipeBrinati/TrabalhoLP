@@ -1,194 +1,214 @@
-import Data.Char
-import Data.List
 import System.Random
+import Data.Char (isDigit)
+import Data.List (intercalate)
 import Data.Maybe (mapMaybe)
-import Text.Read (readMaybe)
 
--- Definição de tipos
-
-data Cell = Empty | Number Int | Bomb deriving (Eq)
+-- Definição dos tipos de dados
 
 type Coord = (Int, Int)
 
+data Cell = Empty | Number Int | Bomb | MarkedBomb deriving (Eq)
+
+data Action = Reveal | Mark | Quit deriving (Eq)
+
 type Board = [[Cell]]
 
--- Função principal
+-- Funções de criação do tabuleiro
 
-main :: IO ()
-main = do
-  putStrLn "Bem-vindo ao Campo Minado!"
-  (rows, cols) <- getSize
-  numBombs <- getNumBombs (rows, cols)
-  let board = generateBoard rows cols numBombs
-  playGame rows cols board
+createEmptyBoard :: Int -> Int -> Board
+createEmptyBoard rows cols = replicate rows (replicate cols Empty)
 
--- Funções de interação com o usuário
+placeBombs :: Int -> Int -> Int -> Board -> IO Board
+placeBombs rows cols numBombs board = do
+  bombCoords <- generateBombCoords rows cols numBombs
+  return (foldr (\c acc -> updateCell c Bomb acc) board bombCoords)
 
-getSize :: IO (Int, Int)
-getSize = do
-  putStrLn "Digite o número de linhas do tabuleiro:"
-  rows <- getIntInput
-  putStrLn "Digite o número de colunas do tabuleiro:"
-  cols <- getIntInput
-  if rows > 0 && cols > 0
-    then return (rows, cols)
-    else do
-      putStrLn "Tamanho inválido. Tente novamente."
-      getSize
+generateBombCoords :: Int -> Int -> Int -> IO [Coord]
+generateBombCoords rows cols numBombs = do
+  gen <- newStdGen
+  let allCoords = [(x, y) | x <- [0 .. rows - 1], y <- [0 .. cols - 1]]
+      shuffledCoords = fisherYatesShuffle gen allCoords
+  return (take numBombs shuffledCoords)
 
-getNumBombs :: (Int, Int) -> IO Int
-getNumBombs (rows, cols) = do
-  putStrLn "Digite o número de bombas:"
-  numBombs <- getIntInput
-  let maxBombs = rows * cols `div` 2
-  if numBombs >= 0 && numBombs <= maxBombs
-    then return numBombs
-    else do
-      if numBombs > maxBombs
-        then do
-          putStrLn $ "Numero de Bombas excede o máximo. " ++ show maxBombs ++ " sendo utilizadas"
-          return maxBombs
-        else do
-          putStrLn $ "Número inválido. Tente novamente."
-          getNumBombs (rows, cols)
+fisherYatesShuffle :: StdGen -> [a] -> [a]
+fisherYatesShuffle gen xs = go gen xs []
+  where
+    go _ [] acc = acc
+    go g xs acc =
+      let (n, newG) = randomR (0, length xs - 1) g
+          elem = xs !! n
+          remaining = take n xs ++ drop (n + 1) xs
+       in go newG remaining (elem : acc)
 
-getIntInput :: IO Int
-getIntInput = do
-  input <- getLine
-  case readMaybe input of
-    Just n -> return n
-    Nothing -> do
-      putStrLn "Entrada inválida. Tente novamente."
-      getIntInput
-
--- Funções de geração e manipulação do tabuleiro
-
-generateBoard :: Int -> Int -> Int -> Board
-generateBoard rows cols numBombs =
-  let board = replicate rows (replicate cols Empty)
-      gen = mkStdGen seed
-      seed = rows + cols + numBombs
-      indices = take numBombs $ nub $ randomRs (0, rows * cols - 1) gen
-      bombs = map (\idx -> (idx `div` cols, idx `mod` cols)) indices
-   in foldr (\coord acc -> updateCell coord Bomb acc) board bombs
-
+-- Funções de manipulação do tabuleiro
 
 updateCell :: Coord -> Cell -> Board -> Board
 updateCell (x, y) cell board =
-  let (before, row : after) = splitAt x board
-      (left, _ : right) = splitAt y row
-   in before ++ [left ++ [cell] ++ right] ++ after
+  take x board
+    ++ [take y (board !! x) ++ [cell] ++ drop (y + 1) (board !! x)]
+    ++ drop (x + 1) board
 
 getCell :: Board -> Coord -> Cell
 getCell board (x, y) = board !! x !! y
 
-isHiddenCell :: Cell -> Bool
-isHiddenCell cell = cell == Empty
-
 isBomb :: Cell -> Bool
 isBomb cell = cell == Bomb
 
-countAdjacentBombs :: Coord -> Board -> Int
-countAdjacentBombs (x, y) board =
-  let neighbors = getNeighbors (x, y) (length board)
-   in length $ filter isBomb $ map (getCell board) neighbors
+isNumbered :: Cell -> Bool
+isNumbered cell = case cell of
+  Number _ -> True
+  _ -> False
 
-getNeighbors :: Coord -> Int -> [Coord]
-getNeighbors (x, y) size =
-  let neighbors = [(x - 1, y), (x, y - 1), (x, y + 1), (x + 1, y)]
-   in filter (isValidCoord size) neighbors
+getAdjacentCoords :: Coord -> Int -> Int -> [Coord]
+getAdjacentCoords (x, y) rows cols =
+  let coords = [(x, y+1),(x-1, y),(x+1, y),(x, y-1)]
+   in filter (\(x', y') -> x' >= 0 && x' < rows && y' >= 0 && y' < cols) coords
 
-isValidCoord :: Int -> Coord -> Bool
-isValidCoord size (x, y) = x >= 0 && x < size && y >= 0 && y < size
+-- Função principal de jogo
 
-revealCell :: Coord -> Board -> Board
-revealCell coord@(x, y) board
-  | not (isValidCoord (length board) coord) = board
-  | not (isHiddenCell cell) = board
-  | isBomb cell = revealAllCells board
-  | x == 0 || y == 0 = updateCell coord (Number count) board
-  | count == 0 = revealEmptyCells [(x, y)] (updateCell coord (Number count) board)
-  | otherwise = updateCell coord (Number count) board
-  where
-    cell = getCell board coord
-    count = countAdjacentBombs coord board
+playGame :: Int -> Int -> Int -> IO ()
+playGame rows cols numBombs = do
+  emptyBoard <- return $ createEmptyBoard rows cols
+  board <- placeBombs rows cols numBombs emptyBoard
+  putStrLn "Tabuleiro Inicial:"
+  printBoard board
+  playTurn rows cols board
 
+playTurn :: Int -> Int -> Board -> IO ()
+playTurn rows cols board = do
+  putStrLn "Digite as coordenadas para revelar uma célula ou marcar/desmarcar uma célula (linha coluna ação):"
+  input <- getLine
+  case parseInput input of
+    Just (coord, action) ->
+      case action of
+        Reveal -> do
+          let newBoard = revealCell coord rows cols board
+          if isBomb (getCell newBoard coord)
+            then do
+              putStrLn "Você perdeu! O jogo acabou."
+              putStrLn "Tabuleiro Final:"
+              printBoard newBoard
+            else do
+              putStrLn "Tabuleiro Atual:"
+              printBoard newBoard
+              if checkWin newBoard
+                then do
+                  putStrLn "Parabéns! Você venceu o jogo."
+                  putStrLn "Tabuleiro Final:"
+                  printBoard newBoard
+                else playTurn rows cols newBoard
+        Mark -> do
+          let newBoard = markCell coord board
+          putStrLn "Tabuleiro Atual:"
+          printBoard newBoard
+          playTurn rows cols newBoard
+        Quit -> putStrLn "O jogo foi encerrado."
+    Nothing -> do
+      putStrLn "Entrada inválida. Tente novamente."
+      playTurn rows cols board
 
-revealEmptyCells :: [Coord] -> Board -> Board
-revealEmptyCells [] board = board
-revealEmptyCells (coord : coords) board =
-  let updatedBoard = revealCell coord board
-      newEmptyNeighbors = filter (\neighbor -> isHiddenCell (getCell updatedBoard neighbor)) (getNeighbors coord (length board))
-      newCoords = coords ++ newEmptyNeighbors
-   in revealEmptyCells newCoords updatedBoard
-
-revealAllCells :: Board -> Board
-revealAllCells board = map revealRow board
-  where
-    revealRow = map revealCell'
-    revealCell' cell
-      | isHiddenCell cell = Number $ countAdjacentBombs (0, 0) board
-      | otherwise = cell
-
--- Função principal do jogo
-
-playGame :: Int -> Int -> Board -> IO ()
-playGame rows cols board = do
-  putStrLn $ "\n" ++ renderBoard board
-  putStrLn "Digite as coordenadas para revelar uma célula (linha e coluna):"
-  coord <- getCoordInput rows cols
-  let updatedBoard = revealCell coord board
-  if isBomb (getCell updatedBoard coord)
-    then do
-      putStrLn $ "\n" ++ renderBoard (revealAllCells updatedBoard)
-      putStrLn "Game Over! Voce foi explodido!"
-    else if isGameOver updatedBoard
-           then do
-             putStrLn $ "\n" ++ renderBoard (revealAllCells updatedBoard)
-             putStrLn "Parabens! Voce venceu!"
-           else playGame rows cols updatedBoard
-
-
-getCoordInput :: Int -> Int -> IO Coord
-getCoordInput rows cols = do
-  putStrLn "Digite a linha da célula:"
-  row <- getValidCoordInput rows
-  putStrLn "Digite a coluna da célula:"
-  col <- getValidCoordInput cols
-  return (row, col)
-
-getValidCoordInput :: Int -> IO Int
-getValidCoordInput maxVal = do
-  input <- getIntInput
-  if input >= 0 && input < maxVal
-    then return input
-    else do
-      putStrLn "Coordenada inválida. Tente novamente."
-      getValidCoordInput maxVal
-
-
-readMaybeCoord :: String -> Maybe Coord
-readMaybeCoord input =
-  case mapMaybe readMaybeInt (words input) of
-    [x, y] -> Just (x, y)
+parseInput :: String -> Maybe (Coord, Action)
+parseInput input =
+  case words input of
+    [xStr, yStr, actionStr] -> do
+      x <- parseCoord xStr
+      y <- parseCoord yStr
+      action <- parseAction actionStr
+      return ((x, y), action)
     _ -> Nothing
 
-readMaybeInt :: String -> Maybe Int
-readMaybeInt s = case reads s of
-  [(n, "")] -> Just n
-  _ -> Nothing
+parseCoord :: String -> Maybe Int
+parseCoord str =
+  if all isDigit str then Just (read str) else Nothing
+
+parseAction :: String -> Maybe Action
+parseAction str =
+  case str of
+    "-" -> Just Mark
+    "+" -> Just Mark
+    "r" -> Just Reveal
+    _ -> Nothing
+
+revealCell :: Coord -> Int -> Int -> Board -> Board
+revealCell coord@(x, y) rows cols board =
+  case getCell board coord of
+    Empty ->
+      if isRevealed coord board
+        then board -- A célula já foi revelada, não faz nada
+        else
+          let newBoard = updateCell coord (getCell board coord) board
+          in updateEmptyWithNumbers coord rows cols newBoard
+    _ -> updateCell coord (getCell board coord) board
+
+updateEmptyWithNumbers :: Coord -> Int -> Int -> Board -> Board
+updateEmptyWithNumbers coord@(x, y) rows cols board =
+  let bombCount = countAdjacentBombs coord rows cols board
+      newBoard = updateCell coord (Number bombCount) board
+  in if bombCount == 0
+       then newBoard
+       else newBoard
+
+countAdjacentBombs :: Coord -> Int -> Int -> Board -> Int
+countAdjacentBombs (x, y) rows cols board =
+  let adjacentCoords = getAdjacentCoords (x, y) rows cols
+      cells = map (getCell board) adjacentCoords
+  in length $ filter isBomb cells
 
 
--- Funções auxiliares
+isRevealed :: Coord -> Board -> Bool
+isRevealed coord board = case getCell board coord of
+  Empty -> False
+  Number _ -> True
+  Bomb -> True
+  MarkedBomb -> True
 
-isGameOver :: Board -> Bool
-isGameOver board = all (not . isHiddenCell) (concat board)
 
-renderBoard :: Board -> String
-renderBoard = unlines . map renderRow
-  where
-    renderRow = intercalate " " . map renderCell
-    renderCell Empty = "*"
-    renderCell (Number n) = show n
-    renderCell Bomb = "X"
--- modificar aqui quando acabar de testar
+
+markCell :: Coord -> Board -> Board
+markCell coord@(x, y) board =
+  let cell = getCell board coord
+   in case cell of
+        Empty -> updateCell coord MarkedBomb board
+        MarkedBomb -> updateCell coord Empty board
+        _ -> board
+
+checkWin :: Board -> Bool
+checkWin board =
+  all (\row -> all (\cell -> isBomb cell || isNumbered cell) row) board
+
+-- Funções de impressão do tabuleiro
+
+printBoard :: Board -> IO ()
+printBoard board = do
+  let rows = length board
+      cols = length (head board)
+  putStrLn $ "    " ++ unwords (map show [0 .. cols - 1])
+  putStrLn $ "   " ++ replicate (cols * 2 + 1) '-'
+  mapM_ (printRow cols) (zip [0 ..] board)
+
+printRow :: Int -> (Int, [Cell]) -> IO ()
+printRow cols (rowIdx, cells) = do
+  putStr $ show rowIdx ++ " | "
+  mapM_ (putStr . cellToChar) cells
+  putStrLn ""
+
+cellToChar :: Cell -> String
+cellToChar cell =
+  case cell of
+    Empty -> ". "
+    Number n -> show n ++ " "
+    Bomb -> ". "
+    MarkedBomb -> "+ "
+
+-- Execução do jogo
+
+main :: IO ()
+main = do
+  putStrLn "Bem-vindo ao jogo Campo Minado!"
+  putStrLn "Digite o número de linhas do tabuleiro:"
+  rows <- readLn
+  putStrLn "Digite o número de colunas do tabuleiro:"
+  cols <- readLn
+  putStrLn "Digite o número de bombas:"
+  numBombs <- readLn
+  playGame rows cols numBombs
