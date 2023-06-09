@@ -7,9 +7,9 @@ import Data.Maybe (mapMaybe)
 
 type Coord = (Int, Int)
 
-data Cell = Empty | Number Int | Bomb | MarkedBomb deriving (Eq)
+data Cell = Empty | Number Int | Bomb | MarkedBomb | ActualBomb deriving (Eq)
 
-data Action = Reveal | Mark | Quit deriving (Eq)
+data Action = Reveal | Mark | UnMark | Quit deriving (Eq)
 
 type Board = [[Cell]]
 
@@ -27,11 +27,11 @@ generateBombCoords :: Int -> Int -> Int -> IO [Coord]
 generateBombCoords rows cols numBombs = do
   gen <- newStdGen
   let allCoords = [(x, y) | x <- [0 .. rows - 1], y <- [0 .. cols - 1]]
-      shuffledCoords = fisherYatesShuffle gen allCoords
+      shuffledCoords = shuffleBombs gen allCoords
   return (take numBombs shuffledCoords)
 
-fisherYatesShuffle :: StdGen -> [a] -> [a]
-fisherYatesShuffle gen xs = go gen xs []
+shuffleBombs :: StdGen -> [a] -> [a]
+shuffleBombs gen xs = go gen xs []
   where
     go _ [] acc = acc
     go g xs acc =
@@ -59,9 +59,9 @@ isNumbered cell = case cell of
   Number _ -> True
   _ -> False
 
-getAdjacentCoords :: Coord -> Int -> Int -> [Coord]
-getAdjacentCoords (x, y) rows cols =
-  let coords = [(x, y+1),(x-1, y),(x+1, y),(x, y-1)]
+coordenadasAdjacentes :: Coord -> Int -> Int -> [Coord]
+coordenadasAdjacentes (x, y) rows cols =
+  let coords = [(x + dx, y + dy) | dx <- [-1, 0, 1], dy <- [-1, 0, 1], dx /= 0 || dy /= 0]
    in filter (\(x', y') -> x' >= 0 && x' < rows && y' >= 0 && y' < cols) coords
 
 -- Função principal de jogo
@@ -102,6 +102,11 @@ playTurn rows cols board = do
           putStrLn "Tabuleiro Atual:"
           printBoard newBoard
           playTurn rows cols newBoard
+        UnMark -> do
+          let newBoard = unmarkCell coord board
+          putStrLn "Tabuleiro Atual:"
+          printBoard newBoard
+          playTurn rows cols newBoard
         Quit -> putStrLn "O jogo foi encerrado."
     Nothing -> do
       putStrLn "Entrada inválida. Tente novamente."
@@ -124,7 +129,7 @@ parseCoord str =
 parseAction :: String -> Maybe Action
 parseAction str =
   case str of
-    "-" -> Just Mark
+    "-" -> Just UnMark
     "+" -> Just Mark
     "r" -> Just Reveal
     _ -> Nothing
@@ -150,7 +155,7 @@ updateEmptyWithNumbers coord@(x, y) rows cols board =
 
 countAdjacentBombs :: Coord -> Int -> Int -> Board -> Int
 countAdjacentBombs (x, y) rows cols board =
-  let adjacentCoords = getAdjacentCoords (x, y) rows cols
+  let adjacentCoords = coordenadasAdjacentes (x, y) rows cols
       cells = map (getCell board) adjacentCoords
   in length $ filter isBomb cells
 
@@ -169,7 +174,15 @@ markCell coord@(x, y) board =
   let cell = getCell board coord
    in case cell of
         Empty -> updateCell coord MarkedBomb board
+        Bomb -> updateCell coord ActualBomb board
+        _ -> board
+
+unmarkCell :: Coord -> Board -> Board
+unmarkCell coord@(x, y) board =
+  let cell = getCell board coord
+   in case cell of
         MarkedBomb -> updateCell coord Empty board
+        ActualBomb -> updateCell coord Bomb board
         _ -> board
 
 checkWin :: Board -> Bool
@@ -199,6 +212,7 @@ cellToChar cell =
     Number n -> show n ++ " "
     Bomb -> ". "
     MarkedBomb -> "+ "
+    ActualBomb -> "+ "
 
 -- Execução do jogo
 
