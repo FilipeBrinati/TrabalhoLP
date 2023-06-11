@@ -67,15 +67,18 @@ isNumbered cell = case cell of
 
 coordenadasAdjacentes :: Coord -> Int -> Int -> [Coord]
 coordenadasAdjacentes (x, y) rows cols =
-  let coords = [(x + dx, y + dy) | dx <- [-1, 0, 1], dy <- [-1, 0, 1], dx /= 0 || dy /= 0]
+  let coords = [(x + 1, y),(x - 1, y), (x, y + 1), (x, y - 1)]
    in filter (\(x', y') -> x' >= 0 && x' < rows && y' >= 0 && y' < cols) coords
 
 -- Função principal de jogo
 
 playGame :: Int -> Int -> Int -> IO ()
 playGame rows cols numBombs = do
+  let maxBombs = rows * cols `div` 2
+      adjustedBombs = min numBombs maxBombs
+  putStrLn $ "Número de Bombas: " ++ show adjustedBombs
   emptyBoard <- return $ createEmptyBoard rows cols
-  board <- placeBombs rows cols numBombs emptyBoard
+  board <- placeBombs rows cols adjustedBombs emptyBoard
   putStrLn "Tabuleiro Inicial:"
   printBoard board
   playTurn rows cols board
@@ -215,7 +218,7 @@ cellToChar cell =
   case cell of
     Empty -> ". "
     Number n -> show n ++ " "
-    Bomb -> ". "
+    Bomb -> "* "
     MarkedBomb -> "+ "
     ActualBomb -> "+ "
 
