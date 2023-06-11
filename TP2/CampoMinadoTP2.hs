@@ -1,3 +1,9 @@
+--  Autores:
+-- Filipe Brinati Furtado - 201865563C 
+-- Lucca Oliveira Schröder - 201765205C
+
+
+
 import System.Random
 import Data.Char (isDigit)
 import Data.List (intercalate)
@@ -9,7 +15,7 @@ type Coord = (Int, Int)
 
 data Cell = Empty | Number Int | Bomb | MarkedBomb | ActualBomb deriving (Eq)
 
-data Action = Reveal | Mark | UnMark | Quit deriving (Eq)
+data Action = Reveal | Mark | UnMark 
 
 type Board = [[Cell]]
 
@@ -107,7 +113,6 @@ playTurn rows cols board = do
           putStrLn "Tabuleiro Atual:"
           printBoard newBoard
           playTurn rows cols newBoard
-        Quit -> putStrLn "O jogo foi encerrado."
     Nothing -> do
       putStrLn "Entrada inválida. Tente novamente."
       playTurn rows cols board
