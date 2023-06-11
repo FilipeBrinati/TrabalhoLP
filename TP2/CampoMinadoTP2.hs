@@ -150,8 +150,8 @@ revealCell coord@(x, y) rows cols board =
       if isRevealed coord board
         then board -- A célula já foi revelada, não faz nada
         else
-          let newBoard = updateCell coord (getCell board coord) board
-          in updateEmptyWithNumbers coord rows cols newBoard
+          let newBoard = updateEmptyWithNumbers coord rows cols board
+          in newBoard
     _ -> updateCell coord (getCell board coord) board
 
 updateEmptyWithNumbers :: Coord -> Int -> Int -> Board -> Board
