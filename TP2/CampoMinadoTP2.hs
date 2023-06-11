@@ -60,6 +60,9 @@ getCell board (x, y) = board !! x !! y
 isBomb :: Cell -> Bool
 isBomb cell = cell == Bomb
 
+isActualBomb :: Cell -> Bool
+isActualBomb cell = cell == ActualBomb
+
 isNumbered :: Cell -> Bool
 isNumbered cell = case cell of
   Number _ -> True
@@ -157,9 +160,7 @@ updateEmptyWithNumbers :: Coord -> Int -> Int -> Board -> Board
 updateEmptyWithNumbers coord@(x, y) rows cols board =
   let bombCount = countAdjacentBombs coord rows cols board
       newBoard = updateCell coord (Number bombCount) board
-  in if bombCount == 0
-       then newBoard
-       else newBoard
+  in newBoard
 
 countAdjacentBombs :: Coord -> Int -> Int -> Board -> Int
 countAdjacentBombs (x, y) rows cols board =
@@ -174,6 +175,7 @@ isRevealed coord board = case getCell board coord of
   Number _ -> True
   Bomb -> True
   MarkedBomb -> True
+  ActualBomb -> True
 
 
 
@@ -195,7 +197,7 @@ unmarkCell coord@(x, y) board =
 
 checkWin :: Board -> Bool
 checkWin board =
-  all (\row -> all (\cell -> isBomb cell || isNumbered cell) row) board
+  all (\row -> all (\cell -> isBomb cell || isNumbered cell || isActualBomb cell) row) board
 
 -- Funções de impressão do tabuleiro
 
@@ -218,7 +220,7 @@ cellToChar cell =
   case cell of
     Empty -> ". "
     Number n -> show n ++ " "
-    Bomb -> "* "
+    Bomb -> ". "
     MarkedBomb -> "+ "
     ActualBomb -> "+ "
 
