@@ -6,8 +6,6 @@
 
 import System.Random
 import Data.Char (isDigit)
-import Data.List (intercalate)
-import Data.Maybe (mapMaybe)
 
 -- Definição dos tipos de dados
 
