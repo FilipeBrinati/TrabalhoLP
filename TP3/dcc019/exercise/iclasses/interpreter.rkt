@@ -1,3 +1,7 @@
+;Filipe Brinati Furtado - 201865563C 
+;Lucca Oliveira Schröder - 201765205C
+
+
 #lang racket
 
 (require dcc019/util/env
@@ -17,14 +21,14 @@
     [(ast:decl class-name super-name field-names method-decls)
      (begin
        (initialize-class-decl class-name super-name field-names method-decls)
-       'uninitialized)] ; Return 'uninitialized' for class declarations
+       'uninitialized)]
     [(ast:var v)
      (let ([val (apply-env Δ v)])
        (if (eq? val 'no-bind)
            (raise-user-error "Variable not found: " v)
            (if (object? val)
                val
-               (deref val))))] ; <- Handle "no bind"
+               (deref val))))]
     [(ast:let (var x) e1 e2) (value-of e2 (extend-env x (value-of e1 Δ) Δ))]
    [(ast:new (var c) args)
      (let ([class (lookup-class (value-of c Δ))])
@@ -69,14 +73,14 @@
      (let ([obj (apply-env Δ '%self)])
        (apply-method obj c (values-of-exps args Δ) Δ))]
     [(ast:decl _ _ _ _)
-     '()] ; Skip class declarations
+     '()]
     [e (raise-user-error "unimplemented-construction-result-of: " e)]
     ))
 
 (define (value-of-program prog)
   (empty-store)
-  (initialize-class-env) ; Initialize the class environment
-  (let ([init-env (extend-env '%self 'no-bind empty-env)]) ; Initialize the environment with '%self binding
+  (initialize-class-env) 
+  (let ([init-env (extend-env '%self 'no-bind empty-env)])
     (match prog
       [(ast:prog decls stmt)
        (begin
